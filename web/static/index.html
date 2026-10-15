@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WB Automation</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css?v=30">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Сайдбар ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">◈</span>
+      WB Automation
+    </div>
+
+    <!-- Переключатель разделов -->
+    <div class="section-switch">
+      <button class="section-btn active" data-section="wb" onclick="App.switchSection('wb')">WB</button>
+      <button class="section-btn" data-section="whatsapp" onclick="App.switchSection('whatsapp')">WhatsApp</button>
+    </div>
+
+    <!-- Раздел WB -->
+    <div id="sidebar-wb">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Задачи</div>
+        <div id="task-list"></div>
+        <button class="btn-add" onclick="App.createTask()">
+          <span class="btn-add-icon">+</span> Новая задача
+        </button>
+      </div>
+    </div>
+
+    <!-- Раздел WhatsApp -->
+    <div id="sidebar-wa" class="hidden">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Аккаунты WhatsApp</div>
+        <div id="wa-account-list"></div>
+        <button class="btn-add" onclick="App.openAddWaAccount()">
+          <span class="btn-add-icon">+</span> Добавить аккаунт
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <span class="ws-indicator" id="ws-dot" title="WebSocket"></span>
+      <span class="ws-label" id="ws-label">Подключение...</span>
+    </div>
+  </aside>
+
+  <!-- ── Основная область ── -->
+  <main class="main">
+
+   <!-- ===== Главная область WB ===== -->
+   <div id="wb-main">
+
+    <!-- Заглушка -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">◈</div>
+      <div class="empty-title">WB Automation</div>
+      <div class="empty-sub">Выберите задачу или создайте новую</div>
+    </div>
+
+    <!-- Детали задачи -->
+    <div id="task-detail" class="task-detail hidden">
+
+      <!-- Переключатель подразделов -->
+      <div class="view-tabs">
+        <div class="view-tab active" data-view="table" onclick="App.selectTaskView('table')">Таблица</div>
+        <div class="view-tab" data-view="manage" onclick="App.selectTaskView('manage')">Управление</div>
+        <div class="view-tab" data-view="logs" onclick="App.selectTaskView('logs')">Логи</div>
+      </div>
+
+      <!-- ВКЛАДКА: Таблица -->
+      <div id="task-view-table" class="task-view">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">
+              Продавцы
+              <span id="sellers-count" class="count-badge">0</span>
+            </span>
+          </div>
+
+          <!-- Фильтры -->
+          <div class="filters-row">
+            <input id="filter-search" type="text" class="field-input filter-search"
+                   placeholder="Поиск"
+                   oninput="App.loadSellers()">
+            <div class="filter-dropdown" id="fdrop-query">
+              <button class="filter-drop-btn" onclick="App.toggleFilterDrop('query')">Запросы</button>
+              <div class="filter-drop-panel hidden" id="fdrop-query-panel"></div>
+            </div>
+            <div class="filter-dropdown" id="fdrop-date">
+              <button class="filter-drop-btn" onclick="App.toggleFilterDrop('date')">Даты</button>
+              <div class="filter-drop-panel hidden" id="fdrop-date-panel"></div>
+            </div>
+            <div class="filter-dropdown" id="fdrop-status">
+              <button class="filter-drop-btn" onclick="App.toggleFilterDrop('status')">Статусы</button>
+              <div class="filter-drop-panel hidden" id="fdrop-status-panel"></div>
+            </div>
+            <button class="btn-ghost-sm" onclick="App.resetFilters()">Сбросить</button>
+          </div>
+
+          <!-- Таблица -->
+          <div class="table-wrapper">
+            <table class="sellers-table">
+              <thead>
+                <tr>
+                  <th>Запрос</th>
+                  <th>Имя Отчество</th>
+                  <th>ИНН</th>
+                  <th>ОГРНИП</th>
+                  <th>Магазин</th>
+                  <th>Продавец</th>
+                  <th>Артикул</th>
+                  <th>Телефон</th>
+                  <th>Статус</th>
+                  <th>Аккаунт</th>
+                  <th>Дата</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="sellers-body"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ВКЛАДКА: Управление -->
+      <div id="task-view-manage" class="task-view hidden">
+
+        <!-- Запросы -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Поисковые запросы</span>
+            <div class="task-controls">
+              <span id="task-status-badge" class="badge badge-idle">Остановлен</span>
+              <button id="btn-start-stop" class="btn-start" onclick="App.toggleTask()">
+                <span class="btn-icon">▶</span> Запустить
+              </button>
+            </div>
+          </div>
+          <table class="queries-table" id="queries-table">
+            <thead>
+              <tr>
+                <th>Запрос</th>
+                <th>Продавцов</th>
+                <th>С строки</th>
+                <th>Лимит проверок</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="queries-body"></tbody>
+          </table>
+          <button class="btn-add btn-add-inline" onclick="App.addQueryRow()">
+            <span class="btn-add-icon">+</span> Добавить запрос
+          </button>
+        </div>
+
+        <!-- Пробив селлеров -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Пробив селлеров</span>
+            <div class="task-controls">
+              <button id="btn-probiv-stop" class="btn-stop" disabled onclick="App.stopProbiv()">
+                <span class="btn-icon">■</span> Остановить
+              </button>
+            </div>
+          </div>
+          <button class="probiv-accounts-toggle" onclick="App.toggleProbivAccounts()">
+            <span id="probiv-accounts-summary">Аккаунты не выбраны</span>
+            <span id="probiv-accounts-chevron" class="log-chevron collapsed">▼</span>
+          </button>
+          <div id="probiv-accounts-body" class="probiv-accounts-body collapsed">
+            <div id="probiv-account-list" class="probiv-account-list"></div>
+            <button class="btn-add btn-add-inline" onclick="App.openAddAccount()">
+              <span class="btn-add-icon">+</span> Добавить аккаунт
+            </button>
+          </div>
+        </div>
+
+        <!-- Рассылка WhatsApp -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Рассылка WhatsApp</span>
+            <div class="task-controls">
+              <button id="btn-broadcast-stop" class="btn-stop" disabled onclick="App.stopBroadcast()">
+                <span class="btn-icon">■</span> Остановить
+              </button>
+            </div>
+          </div>
+
+          <label class="form-label">Текст сообщения</label>
+          <textarea id="broadcast-message" class="field-input broadcast-textarea" rows="4"
+                    placeholder="Здравствуйте, {name}! ..." oninput="App.onBroadcastMessageInput()"></textarea>
+          <div class="broadcast-vars" id="broadcast-vars"></div>
+
+          <div class="broadcast-media-row">
+            <button class="btn-ghost-sm" onclick="document.getElementById('broadcast-media-file').click()">📎 Видео / фото</button>
+            <span id="broadcast-media-name" class="broadcast-media-name">Без вложения</span>
+            <button id="broadcast-media-clear" class="btn-ghost-sm btn-ghost-sm--danger hidden" onclick="App.clearBroadcastMedia()">✕</button>
+            <input id="broadcast-media-file" type="file" accept="image/*,video/*" class="hidden" onchange="App.onBroadcastMediaChange(this)">
+          </div>
+
+          <div class="broadcast-limit-row">
+            <label class="form-label">Дневной лимит на аккаунт</label>
+            <input id="broadcast-daily-limit" type="number" min="0" class="field-input broadcast-limit-input"
+                   value="30" onchange="App.onBroadcastLimitInput()">
+          </div>
+
+          <div class="broadcast-limit-row">
+            <label class="form-label">Задержка между отправками, сек</label>
+            <input id="broadcast-min-delay" type="number" min="0" step="1" class="field-input broadcast-limit-input"
+                   value="4" title="минимум" onchange="App.onBroadcastLimitInput()">
+            <span class="broadcast-delay-dash">—</span>
+            <input id="broadcast-max-delay" type="number" min="0" step="1" class="field-input broadcast-limit-input"
+                   value="9" title="максимум" onchange="App.onBroadcastLimitInput()">
+          </div>
+
+          <button class="probiv-accounts-toggle" onclick="App.toggleBroadcastAccounts()">
+            <span id="broadcast-accounts-summary">Аккаунты не выбраны</span>
+            <span id="broadcast-accounts-chevron" class="log-chevron collapsed">▼</span>
+          </button>
+          <div id="broadcast-accounts-body" class="probiv-accounts-body collapsed">
+            <div id="broadcast-account-list" class="probiv-account-list"></div>
+            <div class="broadcast-accounts-hint">Аккаунты добавляются и авторизуются в разделе «WhatsApp» слева.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ВКЛАДКА: Логи -->
+      <div id="task-view-logs" class="task-view logs-view hidden">
+        <div class="panel logs-panel">
+          <div class="panel-header">
+            <span class="panel-title">Парсинг</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-ghost-sm" onclick="App.copyLog('parse')">Скопировать</button>
+              <button class="btn-ghost-sm btn-ghost-sm--danger" onclick="App.clearLog('parse')">Очистить</button>
+            </div>
+          </div>
+          <div id="log-output-parse" class="log-output"></div>
+        </div>
+        <div class="panel logs-panel">
+          <div class="panel-header">
+            <span class="panel-title">Пробив селлеров</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-ghost-sm" onclick="App.copyLog('probiv')">Скопировать</button>
+              <button class="btn-ghost-sm btn-ghost-sm--danger" onclick="App.clearLog('probiv')">Очистить</button>
+            </div>
+          </div>
+          <div id="log-output-probiv" class="log-output"></div>
+        </div>
+        <div class="panel logs-panel">
+          <div class="panel-header">
+            <span class="panel-title">Рассылка</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-ghost-sm" onclick="App.copyLog('broadcast')">Скопировать</button>
+              <button class="btn-ghost-sm btn-ghost-sm--danger" onclick="App.clearLog('broadcast')">Очистить</button>
+            </div>
+          </div>
+          <div id="log-output-broadcast" class="log-output"></div>
+        </div>
+      </div>
+
+    </div>
+
+   </div><!-- end #wb-main -->
+
+   <!-- ===== Главная область WhatsApp ===== -->
+   <div id="wa-section" class="hidden">
+
+     <div id="wa-empty" class="empty-state">
+       <div class="empty-icon">✆</div>
+       <div class="empty-title">WhatsApp</div>
+       <div class="empty-sub">Выберите аккаунт слева или добавьте новый</div>
+     </div>
+
+     <div id="wa-detail" class="hidden">
+       <div class="panel">
+         <div class="panel-header">
+           <span class="panel-title" id="wa-detail-name">Аккаунт</span>
+           <span id="wa-detail-status" class="badge badge-idle">—</span>
+         </div>
+         <div class="wa-detail-grid">
+           <div class="wa-field">
+             <span class="wa-field-label">Номер</span>
+             <span id="wa-detail-phone" class="wa-field-value">—</span>
+           </div>
+           <div class="wa-field">
+             <span class="wa-field-label">Прокси</span>
+             <span id="wa-detail-proxy" class="wa-field-value">—</span>
+           </div>
+         </div>
+         <div id="wa-detail-hint" class="wa-hint hidden">
+           Отсканируйте QR-код в открывшемся окне браузера телефоном:
+           WhatsApp → Настройки → Связанные устройства → Привязка устройства.
+         </div>
+         <div class="wa-detail-actions">
+           <button id="wa-toggle-btn" class="btn-start" onclick="App.toggleWaWindow()">
+             <span class="btn-icon">▶</span> Открыть переписку
+           </button>
+           <button class="btn-ghost-sm" onclick="App.changeWaProxyCurrent()">Изменить прокси</button>
+           <button class="btn-ghost-sm btn-ghost-sm--danger" onclick="App.deleteWaAccountCurrent()">Удалить</button>
+         </div>
+       </div>
+     </div>
+
+   </div><!-- end #wa-section -->
+
+  </main>
+</div>
+
+<div id="copy-toast" class="copy-toast"></div>
+<div id="ctx-menu" class="ctx-menu"></div>
+
+<!-- Модальное окно авторизации TG аккаунта -->
+<div id="tg-auth-modal" class="modal-overlay hidden">
+  <div class="modal-box modal-box-wide">
+    <div class="modal-title" id="auth-modal-title">Добавить аккаунт</div>
+
+    <!-- Шаг 1: телефон + прокси -->
+    <div id="auth-step-1">
+      <div class="form-group">
+        <label class="form-label">Номер телефона</label>
+        <input id="auth-phone" type="text" class="field-input" placeholder="+79001234567"
+               onkeydown="if(event.key==='Enter')App.authSubmit()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Адрес прокси</label>
+        <input id="auth-proxy-address" type="text" class="field-input" placeholder="46.183.30.237">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Порт</label>
+          <input id="auth-proxy-port" type="number" class="field-input" placeholder="14989">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Тип</label>
+          <select id="auth-proxy-type" class="field-select">
+            <option value="socks5">SOCKS5</option>
+            <option value="http">HTTP(S)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Логин прокси</label>
+          <input id="auth-proxy-user" type="text" class="field-input" placeholder="если есть">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль прокси</label>
+          <input id="auth-proxy-pass" type="password" class="field-input" placeholder="если есть">
+        </div>
+      </div>
+    </div>
+
+    <!-- Шаг 2: код из Telegram -->
+    <div id="auth-step-2" class="hidden">
+      <input id="auth-code" type="text" class="field-input auth-code-input"
+             placeholder="12345" maxlength="10"
+             onkeydown="if(event.key==='Enter')App.authSubmit()">
+    </div>
+
+    <!-- Шаг 3: облачный пароль (2FA) -->
+    <div id="auth-step-3" class="hidden">
+      <input id="auth-password" type="password" class="field-input"
+             placeholder="Введите пароль"
+             onkeydown="if(event.key==='Enter')App.authSubmit()">
+    </div>
+
+    <div id="auth-error" class="auth-error hidden"></div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="App.closeAuthModal()">Отмена</button>
+      <button id="auth-submit-btn" class="btn-start" onclick="App.authSubmit()">Получить код</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка смены прокси TG аккаунта -->
+<div id="change-proxy-modal" class="modal-overlay hidden">
+  <div class="modal-box modal-box-wide">
+    <div class="modal-title">Изменить прокси</div>
+    <div id="cp-form">
+      <div class="form-group">
+        <label class="form-label">Адрес прокси</label>
+        <input id="cp-proxy-address" type="text" class="field-input" placeholder="46.183.30.237">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Порт</label>
+          <input id="cp-proxy-port" type="number" class="field-input" placeholder="14989">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Тип</label>
+          <select id="cp-proxy-type" class="field-select">
+            <option value="socks5">SOCKS5</option>
+            <option value="http">HTTP(S)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Логин прокси</label>
+          <input id="cp-proxy-user" type="text" class="field-input" placeholder="если есть">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль прокси</label>
+          <input id="cp-proxy-pass" type="password" class="field-input" placeholder="если есть">
+        </div>
+      </div>
+    </div>
+    <div id="cp-error" class="auth-error hidden"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="App.closeChangeProxyModal()">Отмена</button>
+      <button id="cp-submit-btn" class="btn-start" onclick="App.submitChangeProxy()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div id="rename-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">Переименовать задачу</div>
+    <input id="rename-input" type="text" class="field-input"
+           placeholder="Название задачи"
+           onkeydown="if(event.key==='Enter')App.confirmRename();else if(event.key==='Escape')App.closeRenameModal()">
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="App.closeRenameModal()">Отмена</button>
+      <button class="btn-start" onclick="App.confirmRename()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка добавления аккаунта WhatsApp -->
+<div id="wa-add-modal" class="modal-overlay hidden">
+  <div class="modal-box modal-box-wide">
+    <div class="modal-title">Добавить аккаунт WhatsApp</div>
+    <div id="wa-add-form">
+      <div class="form-group">
+        <label class="form-label">Название (метка)</label>
+        <input id="wa-name" type="text" class="field-input" placeholder="Например: Основной">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Адрес прокси <span class="req">*</span></label>
+        <input id="wa-proxy-address" type="text" class="field-input" placeholder="46.183.30.237">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Порт <span class="req">*</span></label>
+          <input id="wa-proxy-port" type="number" class="field-input" placeholder="14989">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Тип</label>
+          <select id="wa-proxy-type" class="field-select">
+            <option value="socks5">SOCKS5</option>
+            <option value="http">HTTP(S)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Логин прокси</label>
+          <input id="wa-proxy-user" type="text" class="field-input" placeholder="если есть">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль прокси</label>
+          <input id="wa-proxy-pass" type="password" class="field-input" placeholder="если есть">
+        </div>
+      </div>
+    </div>
+    <div id="wa-add-error" class="auth-error hidden"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="App.closeAddWaAccount()">Отмена</button>
+      <button id="wa-add-submit" class="btn-start" onclick="App.submitAddWaAccount()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка смены прокси аккаунта WhatsApp -->
+<div id="wa-proxy-modal" class="modal-overlay hidden">
+  <div class="modal-box modal-box-wide">
+    <div class="modal-title">Изменить прокси</div>
+    <div id="wa-proxy-form">
+      <div class="form-group">
+        <label class="form-label">Адрес прокси</label>
+        <input id="wap-address" type="text" class="field-input" placeholder="46.183.30.237">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Порт</label>
+          <input id="wap-port" type="number" class="field-input" placeholder="14989">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Тип</label>
+          <select id="wap-type" class="field-select">
+            <option value="socks5">SOCKS5</option>
+            <option value="http">HTTP(S)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Логин прокси</label>
+          <input id="wap-user" type="text" class="field-input" placeholder="если есть">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль прокси</label>
+          <input id="wap-pass" type="password" class="field-input" placeholder="если есть">
+        </div>
+      </div>
+    </div>
+    <div id="wa-proxy-error" class="auth-error hidden"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="App.closeWaProxyModal()">Отмена</button>
+      <button id="wa-proxy-submit" class="btn-start" onclick="App.submitWaProxy()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js?v=29"></script>
+</body>
+</html>

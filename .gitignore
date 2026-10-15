@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+sessions/*
+!sessions/.gitkeep
+logs/*
+!logs/.gitkeep
+data/leads.db
+data/wb/
+data/whatsapp/profiles/
+data/*.log
+.env
+.idea/
